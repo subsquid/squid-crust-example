@@ -1,0 +1,10 @@
+{
+  "outDir": "src/types",
+  "chainVersions": "moonsamaVersions.json",
+  "typesBundle": "moonsama.json",
+  "events": [
+    "evm.Log",
+    "evm.Created"
+  ],
+  "calls": []
+}

@@ -1,0 +1,26 @@
+{
+  "name": "moonsama-event-log",
+  "private": true,
+  "scripts": {
+    "build": "rm -rf lib && tsc"
+  },
+  "dependencies": {
+    "@ethersproject/abi": "^5.5.0",
+    "@subsquid/graphql-server": "^0.1.5",
+    "@subsquid/substrate-metadata": "^0.5.0",
+    "@subsquid/substrate-evm-processor": "^0.0.1",
+    "dotenv": "^10.0.0",
+    "axios": "^0.24.0",
+    "axios-retry": "^3.2.4",
+    "ethers": "^5.5.4",
+    "pg": "^8.7.1",
+    "typeorm": "^0.2.41"
+  },
+  "devDependencies": {
+    "@subsquid/cli": "^0.1.4",
+    "@subsquid/substrate-metadata-explorer": "^0.0.7",
+    "@subsquid/substrate-typegen": "^0.2.3",
+    "@types/node": "^16.11.26",
+    "typescript": "~4.5.4"
+  }
+}
