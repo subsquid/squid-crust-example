@@ -1,6 +1,0 @@
-node_modules
-db
-lib
-src/generated
-.eslintCache
-src/types
