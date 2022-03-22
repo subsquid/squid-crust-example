@@ -1,0 +1,22 @@
+{
+  "outDir": "src/types",
+  "chainVersions": "statemineVersions.json",
+  "typesBundle": "typesBundle.json",
+  "events": [
+    "assets.Created",
+    "assets.MetadataSet",
+    "assets.MetadataCleared",
+    "assets.Issued",
+    "assets.Transferred",
+    "assets.TransferredApproved",
+    "assets.Frozen",
+    "assets.Thawed",
+    "assets.Burned",
+    "assets.TeamChanged",
+    "assets.OwnerChanged",
+    "assets.AssetFrozen",
+    "assets.AssetThawed",
+    "assets.Destroyed"
+  ],
+  "calls": []
+}

@@ -1,0 +1,62 @@
+type Account @entity {
+  id: ID! #Account address
+  assets: [AssetBalance!] @derivedFrom(field: "account")
+  # uniqueInstances: [UniqueInstance!] @derivedFrom(field: "owner")
+}
+enum AssetStatus {
+  ACTIVE
+  FREEZED
+  DESTROYED
+}
+
+enum TransferType {
+  REGULAR
+  DELEGATED #Transfer approved amount by a delegator
+  MINT
+  BURN
+  FREEZE
+  THAWED
+  CREATED
+  DESTROYED
+}
+
+type Asset @entity {
+  id: ID! # Asset Id
+  name: String
+  symbol: String
+  freezer: String
+  decimal: Int
+  owner: String!
+  admin: String
+  issuer: String
+  creator: String
+  minBalance: BigInt
+  status: AssetStatus!
+  totalSupply: BigInt
+  transfers: [Transfer!] @derivedFrom(field: "asset")
+  assetBalances: [AssetBalance!] @derivedFrom(field: "asset")
+}
+
+type AssetBalance @entity {
+  id: ID! #AccountId-AssetId
+  account: Account!
+  balance: BigInt!
+  status: AssetStatus!
+  asset: Asset!
+}
+
+type Transfer  @entity {
+  id: ID! #event id
+  amount: BigInt
+  to: String
+  from: String
+  delegator: String # Delegator address for transfer by delegator
+  fee: BigInt
+  asset: Asset #If asset is null, then its a regular DOT/KSM transfer
+  type: TransferType!
+  extrinisicId: String
+  success: Boolean!
+  createdAt: DateTime!
+  blockHash: String!
+  blockNum: Int!
+}
