@@ -2,7 +2,9 @@ import {
   SubstrateProcessor,
   EventHandlerContext,
   Store,
+  assertNotNull,
 } from "@subsquid/substrate-processor";
+import * as ss58 from '@subsquid/ss58'
 import {
   Account,
   Asset,
@@ -33,8 +35,9 @@ processor.setDataSource({
   archive: "https://statemine.indexer.gc.subsquid.io/v4/graphql",
   chain: "wss://statemine-rpc.dwellir.com",
 });
+
 processor.setBlockRange({ from: 370000 });
-// processor.setTypesBundle(crustTypes);
+processor.setTypesBundle("./typesBundle.json");
 
 processor.addEventHandler("assets.Created", assetCreated);
 processor.addEventHandler("assets.AssetFrozen", assetFrozen);
@@ -152,7 +155,7 @@ export async function assetIssued(ctx: EventHandlerContext): Promise<void> {
   const { assetId, owner, totalSupply } = getAssetsIssuedEvent(ctx);
   const [asset] = await changeAssetBalance(
     ctx.store,
-    assetId.toString(),
+    assetId,
     owner,
     totalSupply
   );
@@ -178,12 +181,12 @@ export async function assetTransfer(ctx: EventHandlerContext): Promise<void> {
   const { assetId, from, to, amount } = getAssetsTransferredEvent(ctx);
   const [asset] = await changeAssetBalance(
     ctx.store,
-    assetId.toString(),
+    assetId,
     from,
     -amount // decrements from sender account
   );
 
-  await changeAssetBalance(ctx.store, assetId.toString(), to, amount);
+  await changeAssetBalance(ctx.store, assetId, to, amount);
 
   const transfer = new Transfer();
   transfer.amount = amount;
@@ -206,7 +209,7 @@ export async function assetBalanceBurned(
   const { assetId, owner, balance } = getAssetsBurnedEvent(ctx);
   const [asset] = await changeAssetBalance(
     ctx.store,
-    assetId.toString(),
+    assetId,
     owner,
     -balance // decrements from account
   );
@@ -232,12 +235,12 @@ export async function assetTransferredApproved(
     getAssetsTransferredApprovedEvent(ctx);
   const [asset] = await changeAssetBalance(
     ctx.store,
-    assetId.toString(),
+    assetId,
     owner,
     -amount // decrements from sender account
   );
 
-  await changeAssetBalance(ctx.store, assetId.toString(), destination, amount);
+  await changeAssetBalance(ctx.store, assetId, destination, amount);
 
   const transfer = new Transfer();
   transfer.amount = amount;
@@ -261,7 +264,7 @@ export async function assetAccountFrozen(
   const {assetId, who} = getAssetsFrozenEvent(ctx);
   const [asset, , assetBalance] = await getAssetAccountDetails(
     ctx.store,
-    assetId.toString(),
+    assetId,
     who
   );
   assetBalance.status = AssetStatus.FREEZED;
@@ -287,7 +290,7 @@ export async function assetBalanceThawed(
   const {assetId, who} = getAssetsThawedEvent(ctx);
   const [asset, , assetBalance] = await getAssetAccountDetails(
     ctx.store,
-    assetId.toString(),
+    assetId,
     who
   );
   assetBalance.status = AssetStatus.ACTIVE;
@@ -331,13 +334,15 @@ type EntityConstructor<T> = {
 
 async function getAssetAccountDetails(
   store: Store,
-  assetId: string,
-  wallet: Uint8Array
+  assetId: number,
+  accountId: Uint8Array
 ): Promise<[Asset, Account, AssetBalance]> {
 
-  const asset = await getOrCreate(store, Asset, assetId);
-  const account = await getOrCreate(store, Account, wallet.toString());
-  const assetBalance = await getOrCreate(store, AssetBalance, `${assetId}-${wallet.toString()}`);
+  const encodedAccountId = assertNotNull(encodeID(accountId, 2));
+  // const encodedAccountId = Buffer.from(accountId).toString('hex')
+  const asset = await getOrCreate(store, Asset, assetId.toString());
+  const account = await getOrCreate(store, Account, encodedAccountId);
+  const assetBalance = await getOrCreate(store, AssetBalance, `${assetId}-${encodedAccountId}`);
 
   assetBalance.status = assetBalance.status
     ? assetBalance.status
@@ -347,15 +352,26 @@ async function getAssetAccountDetails(
 
 async function changeAssetBalance(
   store: Store,
-  assetId: string,
-  wallet: Uint8Array,
+  assetId: number,
+  accountId: Uint8Array,
   amount: bigint
 ): Promise<[Asset, Account, AssetBalance]> {
-  const [asset, account, assetBalance] = await getAssetAccountDetails(store, assetId, wallet);
+  const [asset, account, assetBalance] = await getAssetAccountDetails(store, assetId, accountId);
 
   assetBalance.asset = asset;
   assetBalance.balance = assetBalance.balance || 0n + amount;
   assetBalance.account = account;
   await store.save(assetBalance);
   return [asset, account, assetBalance];
+}
+
+function encodeID(ID: Uint8Array, prefix: string | number) {
+  let ret: string | null
+  try {
+      ret = ss58.codec(prefix).encode(ID)
+  } catch (e) {
+      ret = null
+  }
+
+  return ret
 }
