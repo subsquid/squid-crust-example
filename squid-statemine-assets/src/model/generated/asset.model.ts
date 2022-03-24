@@ -25,8 +25,8 @@ export class Asset {
   @Column_("integer", {nullable: true})
   decimal!: number | undefined | null
 
-  @Column_("text", {nullable: false})
-  owner!: string
+  @Column_("text", {nullable: true})
+  owner!: string | undefined | null
 
   @Column_("text", {nullable: true})
   admin!: string | undefined | null

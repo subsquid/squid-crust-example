@@ -294,6 +294,10 @@ export function getAssetsBurnedEvent(
     const [assetId, owner, balance] = event.asV3;
     return { assetId, owner, balance };
   }
+  if (event.isV504) {
+    const [assetId, owner, balance] = event.asV504;
+    return { assetId, owner, balance };
+  }
   if (event.isV700) {
     const { assetId, owner, balance } = event.asV700;
     return { assetId, owner, balance };

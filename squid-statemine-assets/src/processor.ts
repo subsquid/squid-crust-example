@@ -46,7 +46,7 @@ processor.addEventHandler("assets.Destroyed", assetDestroyed);
 processor.addEventHandler("assets.OwnerChanged", assetOwnerChanged);
 processor.addEventHandler("assets.TeamChanged", assetTeamChanged);
 processor.addEventHandler("assets.MetadataSet", assetMetadata);
-processor.addEventHandler("assets.MetadataCleared", assetMetadata);
+processor.addEventHandler("assets.MetadataCleared", assetMetadataCleared);
 processor.addEventHandler("assets.Issued", assetIssued);
 processor.addEventHandler("assets.Transferred", assetTransfer);
 processor.addEventHandler(
@@ -65,8 +65,8 @@ export async function assetCreated(ctx: EventHandlerContext): Promise<void> {
   const asset = await getOrCreate(ctx.store, Asset, assetId.toString());
 
   asset.id = assetId.toString();
-  asset.creator = creator.toString();
-  asset.owner = owner.toString();
+  asset.creator = assertNotNull(encodeID(creator, 2));
+  asset.owner = assertNotNull(encodeID(owner, 2));
   asset.status = AssetStatus.ACTIVE;
   asset.totalSupply = 0n;
 
@@ -80,7 +80,7 @@ export async function assetOwnerChanged(
 
   const asset = await getOrCreate(ctx.store, Asset, assetId.toString());
 
-  asset.owner = owner.toString();
+  asset.owner = assertNotNull(encodeID(owner, 2));
 
   await ctx.store.save(asset);
 }
@@ -91,9 +91,9 @@ export async function assetTeamChanged(
   const { assetId, issuer, admin, freezer } = getAssetTeamChangedEvent(ctx);
   const asset = await getOrCreate(ctx.store, Asset, assetId.toString());
 
-  asset.issuer = issuer.toString();
-  asset.admin = admin.toString();
-  asset.freezer = freezer.toString();
+  asset.issuer = assertNotNull(encodeID(issuer, 2));
+  asset.admin = assertNotNull(encodeID(admin, 2));
+  asset.freezer = assertNotNull(encodeID(freezer, 2));
 
   await ctx.store.save(asset);
 }
@@ -147,6 +147,7 @@ export async function assetMetadataCleared(
   asset.name = null;
   asset.symbol = null;
   asset.decimal = null;
+  asset.status = asset.status ? asset.status : AssetStatus.ACTIVE;
 
   await ctx.store.save(asset);
 }
@@ -159,6 +160,7 @@ export async function assetIssued(ctx: EventHandlerContext): Promise<void> {
     owner,
     totalSupply
   );
+  asset.owner = assertNotNull(encodeID(owner, 2));
   asset.totalSupply = asset.totalSupply || 0n + totalSupply;
 
   await ctx.store.save(asset);
@@ -170,7 +172,7 @@ export async function assetIssued(ctx: EventHandlerContext): Promise<void> {
   transfer.blockNum = ctx.block.height;
   transfer.createdAt = new Date(ctx.block.timestamp);
   transfer.extrinisicId = ctx.extrinsic?.id;
-  transfer.to = owner.toString();
+  transfer.to = assertNotNull(encodeID(owner, 2));
   transfer.id = ctx.event.id;
   transfer.type = TransferType.MINT;
   transfer.success = true;
@@ -185,7 +187,6 @@ export async function assetTransfer(ctx: EventHandlerContext): Promise<void> {
     from,
     -amount // decrements from sender account
   );
-
   await changeAssetBalance(ctx.store, assetId, to, amount);
 
   const transfer = new Transfer();
@@ -195,8 +196,8 @@ export async function assetTransfer(ctx: EventHandlerContext): Promise<void> {
   transfer.blockNum = ctx.block.height;
   transfer.createdAt = new Date(ctx.block.timestamp);
   transfer.extrinisicId = ctx.extrinsic?.id;
-  transfer.to = to.toString();
-  transfer.from = from.toString();
+  transfer.to = assertNotNull(encodeID(to, 2));
+  transfer.from = assertNotNull(encodeID(from, 2));
   transfer.id = ctx.event.id;
   transfer.type = TransferType.REGULAR;
   transfer.success = true;
@@ -221,7 +222,7 @@ export async function assetBalanceBurned(
   transfer.blockNum = ctx.block.height;
   transfer.createdAt = new Date(ctx.block.timestamp);
   transfer.extrinisicId = ctx.extrinsic?.id;
-  transfer.from = owner.toString();
+  transfer.from = assertNotNull(encodeID(owner, 2));
   transfer.id = ctx.event.id;
   transfer.type = TransferType.BURN;
   transfer.success = true;
@@ -239,7 +240,6 @@ export async function assetTransferredApproved(
     owner,
     -amount // decrements from sender account
   );
-
   await changeAssetBalance(ctx.store, assetId, destination, amount);
 
   const transfer = new Transfer();
@@ -249,9 +249,9 @@ export async function assetTransferredApproved(
   transfer.blockNum = ctx.block.height;
   transfer.createdAt = new Date(ctx.block.timestamp);
   transfer.extrinisicId = ctx.extrinsic?.id;
-  transfer.to = destination.toString();
-  transfer.from = owner.toString();
-  transfer.delegator = delegate.toString();
+  transfer.to = assertNotNull(encodeID(destination, 2));
+  transfer.from = assertNotNull(encodeID(owner, 2));
+  transfer.delegator = assertNotNull(encodeID(delegate, 2));
   transfer.id = ctx.event.id;
   transfer.type = TransferType.DELEGATED;
   transfer.success = true;
@@ -277,7 +277,7 @@ export async function assetAccountFrozen(
   transfer.blockNum = ctx.block.height;
   transfer.createdAt = new Date(ctx.block.timestamp);
   transfer.extrinisicId = ctx.extrinsic?.id;
-  transfer.from = who.toString();
+  transfer.from = assertNotNull(encodeID(who, 2));
   transfer.id = ctx.event.id;
   transfer.type = TransferType.FREEZE;
   transfer.success = true;
@@ -303,7 +303,7 @@ export async function assetBalanceThawed(
   transfer.blockNum = ctx.block.height;
   transfer.createdAt = new Date(ctx.block.timestamp);
   transfer.extrinisicId = ctx.extrinsic?.id;
-  transfer.from = who.toString();
+  transfer.from = assertNotNull(encodeID(who, 2));
   transfer.id = ctx.event.id;
   transfer.type = TransferType.THAWED;
   transfer.success = true;
@@ -313,15 +313,15 @@ export async function assetBalanceThawed(
 async function getOrCreate<T extends { id: string }>(
   store: Store,
   entityConstructor: EntityConstructor<T>,
-  id: string
+  entity_id: string
 ): Promise<T> {
   let e = await store.get<T>(entityConstructor, {
-    where: { id },
+    where: { id: `${entity_id}` },
   });
 
   if (e == null) {
     e = new entityConstructor();
-    e.id = id;
+    e.id = entity_id;
   }
 
   return e;
@@ -358,6 +358,8 @@ async function changeAssetBalance(
 ): Promise<[Asset, Account, AssetBalance]> {
   const [asset, account, assetBalance] = await getAssetAccountDetails(store, assetId, accountId);
 
+  await store.save(asset);
+  await store.save(account);
   assetBalance.asset = asset;
   assetBalance.balance = assetBalance.balance || 0n + amount;
   assetBalance.account = account;
