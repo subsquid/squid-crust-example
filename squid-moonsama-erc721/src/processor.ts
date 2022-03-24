@@ -18,6 +18,8 @@ processor.setDataSource({
     archive: assertNotNull(process.env.ARCHIVE)
 })
 
+processor.setTypesBundle('moonsama');
+
 processor.addPreHook({range: {from: 0, to: 0}}, async ctx => {
     await ctx.store.save(createContractEntity())
 })
@@ -30,7 +32,7 @@ processor.addEvmLogHandler(
         filter: [
             erc721.events['Transfer(address,address,uint256)'].topic
         ], 
-        range: {from: fromBlock}
+        // range: {from: fromBlock}
     }, 
     contractLogsHandler
 )
