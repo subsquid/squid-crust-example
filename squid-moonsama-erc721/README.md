@@ -12,7 +12,7 @@ It accumulates [moonsama](https://moonsama.com/) account transfer via EVM contra
 
 > :memo: **Note:** The peculiarity of this sample project is that it allows to showcase the ability to process EVM logs
 
-The Crust network provides Web3 decentralized storage services. The Squid API in this sample project is focused on gathering information about work accomplished by nodes, adding and/or removing files, and Storage Orders placed by users who want data to be persisted on the network.
+Moonsama is the first NFT marketplace of Moonriver. The Squid API in this sample project is focused on gathering information about the transfer of ERC721 token to and from various accounts.
 
 Starting from the squid-template project, here are the necessary steps to get to the final result, stored in this repository:
 
@@ -22,12 +22,6 @@ Start by installing the dependencies of the project with
 
 ```bash
 npm i
-```
-
-Crust network offers an `npm` package with the definition of the types used in their blockchain. Install this package with the command
-
-```bash
-npm i @crustio/type-definitions
 ```
 
 ### 2. Change the `schema.graphql` file
