@@ -21,28 +21,12 @@ processor.setDataSource({
   chain: "wss://rpc.polkadot.io",
 });
 
-processor.addEventHandler("identity.IdentitySet", async (ctx) => {
-  console.log(ctx.extrinsic?.name);
-  console.log(ctx.event.name);
-  const identityEvent = getIdentitySetEvent(ctx);
-  const accountId = assertNotNull( encodeID(identityEvent.who, 0));
-  console.log(accountId);
 
-  let { store, block, event, extrinsic, _chain } = ctx;
-  const identityInfo = extrinsic? getIndentitySetCall({ store, block, event, extrinsic, _chain }) : null;
-  // // console.log(Buffer.from(identityExt.web.raw).toString('hex'));
-  // // console.log(hexToString(identityInfo.web.value));
+processor.addExtrinsicHandler('identity.setIdentity', async (ctx) =>{
+
+  const identityInfo = getIndentitySetCall(ctx);
   console.log(identityInfo?.web);
-  const identity = await getOrCreate(ctx.store, AccountIdentity, assertNotNull(accountId));
-  // identity.display = hexToString(identityInfo.web);
-  // identity.legal = hexToString(identityInfo.web);
-  // identity.web = hexToString(identityInfo.web);
-  // identity.riot = hexToString(identityInfo.web);
-  // identity.email = hexToString(identityInfo.web);
-  // identity.image = hexToString(identityInfo.web);
-  // identity.image = hexToString(identityInfo.web);
-  
-  await ctx.store.save(identity);
+
 });
 
 processor.run();
