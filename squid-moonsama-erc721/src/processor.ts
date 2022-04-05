@@ -1,7 +1,7 @@
-import {CONTRACT_ADDRESS, createContractEntity} from "./constants";
-import {contractLogsHandler} from "./helpers/event";
+import {CONTRACT_ADDRESS} from "./constants";
+import {contractLogsHandler, createContractEntity} from "./helpers/event";
 import {assertNotNull, SubstrateEvmProcessor} from "@subsquid/substrate-evm-processor";
-import * as erc721 from "./abis/erc721"
+import { events } from "./abis/erc721"
 
 
 const processor = new SubstrateEvmProcessor('moonbeam-substrate')
@@ -26,7 +26,7 @@ processor.addEvmLogHandler(
     CONTRACT_ADDRESS, 
     {
         filter: [
-            erc721.events['Transfer(address,address,uint256)'].topic
+            events['Transfer(address,address,uint256)'].topic
         ], 
     }, 
     contractLogsHandler

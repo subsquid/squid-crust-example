@@ -1,8 +1,26 @@
 import {Owner, Token, Transfer} from "../model";
-import {EvmLogHandlerContext} from "@subsquid/substrate-evm-processor";
-import {CONTRACT_INSTANCE, getContractEntity} from '../constants'
+import {assertNotNull, EvmLogHandlerContext, Store} from "@subsquid/substrate-evm-processor";
+import {CONTRACT_INSTANCE, CONTRACT_NAME, CONTRACT_SYMBOL, CONTRACT_TOTAL_SUPPLY,} from '../constants'
+import {Contract} from "../model"
 import * as erc721 from "../abis/erc721"
 
+export function createContractEntity(): Contract {
+    return new Contract({
+        id: CONTRACT_INSTANCE.address,
+        name: CONTRACT_NAME,
+        symbol: CONTRACT_SYMBOL,
+        totalSupply: CONTRACT_TOTAL_SUPPLY
+    })
+}
+
+let contractEntity: Contract | undefined
+
+export async function getContractEntity({store}: {store: Store}): Promise<Contract> {
+    if (contractEntity == null) {
+        contractEntity = await store.get(Contract, CONTRACT_INSTANCE.address)
+    }
+    return assertNotNull(contractEntity)
+}
 
 export interface EVM_LOG {
     data: string;

@@ -1,7 +1,5 @@
-import {assertNotNull, Store} from "@subsquid/substrate-evm-processor"
 import {ethers} from "ethers";
 import ABI from './abis/ERC721.json'
-import {Contract} from "./model"
 
 export const CONTRACT_ADDRESS = process.env.CONTRACT_ADDRESS || '';
 
@@ -21,21 +19,3 @@ export const CONTRACT_INSTANCE = new ethers.Contract(
     ABI, 
     PROVIDER
 );
-
-export function createContractEntity(): Contract {
-    return new Contract({
-        id: CONTRACT_INSTANCE.address,
-        name: 'Moonsama',
-        symbol: 'MSAMA',
-        totalSupply: 1000n
-    })
-}
-
-let contractEntity: Contract | undefined
-
-export async function getContractEntity({store}: {store: Store}): Promise<Contract> {
-    if (contractEntity == null) {
-        contractEntity = await store.get(Contract, CONTRACT_INSTANCE.address)
-    }
-    return assertNotNull(contractEntity)
-}
