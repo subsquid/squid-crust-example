@@ -1,7 +1,7 @@
-# squid-statemine
+# squid-crust
 
 Sample [squid](https://subsquid.io) project to demonstrate its structure and conventions.
-It accumulates [stetemine](https://parachains.info/details/statemine) information about assets and asset balances and serves them via graphql API.
+It accumulates [crust](https://crust.network) information about storage order placements and user groups and serves them via graphql API.
 
 ## Prerequisites
 
@@ -10,7 +10,7 @@ It accumulates [stetemine](https://parachains.info/details/statemine) informatio
 
 ## Notes on the example
 
-> :memo: **Note:** The peculiarity of this sample project is that it allows to showcase a slightly more complex project with multiple events and various states for 
+> :memo: **Note:** The peculiarity of this sample project is that it allows to showcase how to handle a blockchain for which Subsquid does not provide built-in typesBundle. Shows how to generate a typesBundle file, install external types definitons and how to set these up.
 
 The Crust network provides Web3 decentralized storage services. The Squid API in this sample project is focused on gathering information about work accomplished by nodes, adding and/or removing files, and Storage Orders placed by users who want data to be persisted on the network.
 
