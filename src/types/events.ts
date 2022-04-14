@@ -12,7 +12,7 @@ export class MarketFileSuccessEvent {
    *  The second item is the cid of the file.
    */
   get isV1(): boolean {
-    return this.ctx._chain.getEventHash('market.FileSuccess') === 'ad49319822a2ac0ee63c322d4c5476e20f48c8c5705421cd3e5fbb3d276809fc'
+    return this.ctx._chain.getEventHash('market.FileSuccess') === '15a3ff7f9477a0e9afa431990d912c8024d507c02d31c44934807bcebbbd3adf'
   }
 
   /**
@@ -47,7 +47,7 @@ export class SworkJoinGroupSuccessEvent {
    *  The second item is the group owner's account.
    */
   get isV1(): boolean {
-    return this.ctx._chain.getEventHash('swork.JoinGroupSuccess') === 'fec36c1d81f9490dc6d0685919798598f0bc5f6d7f1c3967da0a7765494ff259'
+    return this.ctx._chain.getEventHash('swork.JoinGroupSuccess') === 'e54ae910805a8a9413af1a7f5885a5d0ba5f4e105175cd6b0ce2a8702ddf1861'
   }
 
   /**
@@ -82,7 +82,7 @@ export class SworkWorksReportSuccessEvent {
    *  The second item is the pub key of the sWorker.
    */
   get isV1(): boolean {
-    return this.ctx._chain.getEventHash('swork.WorksReportSuccess') === 'f64f629f75fdde2d0f286201ec75f1d4860e72c32a5c56a254dff8b3059c711a'
+    return this.ctx._chain.getEventHash('swork.WorksReportSuccess') === '15a3ff7f9477a0e9afa431990d912c8024d507c02d31c44934807bcebbbd3adf'
   }
 
   /**

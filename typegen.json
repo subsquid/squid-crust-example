@@ -1,7 +1,7 @@
 {
   "outDir": "src/types",
   "chainVersions": "crustVersions.json",
-  "typesBundle": "typesBundle.json",
+  "typesBundle": "crustTypesBundle.json",
   "events": [
     "swork.WorksReportSuccess",
     "swork.JoinGroupSuccess",
