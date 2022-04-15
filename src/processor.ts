@@ -1,4 +1,3 @@
-import { TypeRegistry } from "@polkadot/types";
 import {
   SubstrateProcessor,
   EventHandlerContext,
