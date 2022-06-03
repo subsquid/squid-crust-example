@@ -1,7 +1,9 @@
+import * as ss58 from "@subsquid/ss58";
 import {
   SubstrateProcessor,
   EventHandlerContext,
   Store,
+  toHex,
 } from "@subsquid/substrate-processor";
 import {
   Account,
@@ -43,13 +45,13 @@ function stringifyArray(list: any[]): any[] {
 
 async function joinGroupSuccess(ctx: EventHandlerContext): Promise<void> {
   let event = new SworkJoinGroupSuccessEvent(ctx);
-  const memberId = String(event.asV1[0]);
+  const memberId = ss58.codec("crust").encode(event.asV1[0]);
   const account = await getOrCreate(ctx.store, Account, memberId);
   const joinGroup = new JoinGroup();
 
   joinGroup.id = ctx.event.id;
   joinGroup.member = account;
-  joinGroup.owner = String(event.asV1[1]);
+  joinGroup.owner = ss58.codec("crust").encode(event.asV1[1]);
   joinGroup.blockHash = ctx.block.hash;
   joinGroup.blockNum = ctx.block.height;
   joinGroup.createdAt = new Date(ctx.block.timestamp);
@@ -62,13 +64,15 @@ async function joinGroupSuccess(ctx: EventHandlerContext): Promise<void> {
 
 async function fileSuccess(ctx: EventHandlerContext): Promise<void> {
   let event = new MarketFileSuccessEvent(ctx);
-  const accountId = String(event.asV1[0]);
+  const accountId = ss58.codec("crust").encode(event.asV1[0]);
   const account = await getOrCreate(ctx.store, Account, accountId);
   const storageOrder = new StorageOrder();
 
   storageOrder.id = ctx.event.id;
   storageOrder.account = account;
-  storageOrder.fileCid = String(event.asV1[1]);
+  storageOrder.fileCid = toHex(event.asV1[1]);
+  console.log("event fileCID", storageOrder.fileCid);
+  console.log("raw fileCID", String(ctx.event.params[1].value));
   storageOrder.blockHash = ctx.block.hash;
   storageOrder.blockNum = ctx.block.height;
   storageOrder.createdAt = new Date(ctx.block.timestamp);
@@ -81,7 +85,7 @@ async function fileSuccess(ctx: EventHandlerContext): Promise<void> {
 
 async function workReportSuccess(ctx: EventHandlerContext): Promise<void> {
   let event = new SworkWorksReportSuccessEvent(ctx);
-  const accountId = String(event.asV1[0]);
+  const accountId = ss58.codec("crust").encode(event.asV1[0]);
   const accountPr = getOrCreate(ctx.store, Account, accountId);
   const addedFilesObjPr = ctx.extrinsic?.args.find(
     (arg) => arg.name === "addedFiles"
