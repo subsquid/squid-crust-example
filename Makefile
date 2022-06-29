@@ -7,34 +7,15 @@ serve:
 
 
 migrate:
-	@npx sqd db:migrate
-
-
-migration:
-	@npx sqd db:create-migration Data
-
-
-build:
-	@npm run build
+	@npx squid-typeorm-migration apply
 
 
 codegen:
-	@npx sqd codegen
+	@npx squid-typeorm-codegen
 
 
-typegen: crustVersions.json
+typegen:
 	@npx squid-substrate-typegen typegen.json
-
-
-crustVersions.json:
-	@make explore
-
-
-explore:
-	@npx squid-substrate-metadata-explorer \
-		--chain wss://rpc-crust-mainnet.decoo.io \
-		--archive https://crust.indexer.gc.subsquid.io/v4/graphql \
-		--out crustVersions.json
 
 
 up:
@@ -44,5 +25,10 @@ up:
 down:
 	@docker-compose down
 
+explore:
+	@npx squid-substrate-metadata-explorer \
+		--chain wss://rpc-crust-mainnet.decoo.io \
+		--archive https://crust.archive.subsquid.io/graphql \
+		--out crustVersions.json
 
 .PHONY: process serve start codegen migration migrate up down

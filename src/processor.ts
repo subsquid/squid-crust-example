@@ -1,10 +1,13 @@
+import { lookupArchive } from "@subsquid/archive-registry";
 import * as ss58 from "@subsquid/ss58";
 import {
-  SubstrateProcessor,
-  EventHandlerContext,
-  Store,
+  BatchContext,
+  BatchProcessorItem,
+  SubstrateBatchProcessor,
   toHex,
 } from "@subsquid/substrate-processor";
+import { Store, TypeormDatabase } from "@subsquid/typeorm-store";
+import { In } from "typeorm";
 import {
   Account,
   WorkReport,
@@ -17,19 +20,53 @@ import {
   SworkJoinGroupSuccessEvent,
   SworkWorksReportSuccessEvent,
 } from "./types/events";
+import { EventItem } from "@subsquid/substrate-processor/lib/interfaces/dataSelection";
 
-const processor = new SubstrateProcessor("crust_example");
-processor.setDataSource({
-  archive: "https://crust.indexer.gc.subsquid.io/v4/graphql",
-  chain: "wss://rpc-crust-mainnet.decoo.io",
+const processor = new SubstrateBatchProcessor()
+  .setBatchSize(500)
+  .setDataSource({
+    // Lookup archive by the network name in the Subsquid registry
+    archive: lookupArchive("kusama", { release: "FireSquid" }),
+
+    // Use archive created by archive/docker-compose.yml
+    // archive: 'http://localhost:8888/graphql'
+  })
+  .setBlockRange({ from: 583000 })
+  .addEvent("Market.FileSuccess", {
+    data: { event: { args: true } },
+  } as const)
+  .addEvent("Swork.JoinGroupSuccess", {
+    data: { event: { args: true } },
+  } as const)
+  .addEvent("Swork.WorksReportSuccess", {
+    data: { event: { args: true } },
+  } as const);
+
+type Item = BatchProcessorItem<typeof processor>;
+type Ctx = BatchContext<Store, Item>;
+
+processor.run(new TypeormDatabase(), async (ctx) => {
+  let events = getEvents(ctx);
+
+  let accountIds = new Set<string>();
+  for (const jg of events.joinGroups) {
+    accountIds.add(jg.memberId);
+  }
+  for (const mf of events.marketFiles) {
+    accountIds.add(mf.accountId);
+  }
+  for (const wr of events.workReports) {
+    accountIds.add(wr.accountId);
+  }
+
+  let accounts = await ctx.store
+    .findBy(Account, { id: In([...accountIds]) })
+    .then((accounts) => {
+      return new Map(accounts.map((a) => [a.id, a]));
+    });
+
+  await ctx.store.save(Array.from(accounts.values()));
 });
-processor.setBlockRange({ from: 583000 });
-processor.setTypesBundle(crustTypes);
-processor.addEventHandler("market.FileSuccess", fileSuccess);
-processor.addEventHandler("swork.JoinGroupSuccess", joinGroupSuccess);
-processor.addEventHandler("swork.WorksReportSuccess", workReportSuccess);
-
-processor.run();
 
 function stringifyArray(list: any[]): any[] {
   let listStr: any[] = [];
@@ -43,100 +80,117 @@ function stringifyArray(list: any[]): any[] {
   return listStr;
 }
 
-async function joinGroupSuccess(ctx: EventHandlerContext): Promise<void> {
-  let event = new SworkJoinGroupSuccessEvent(ctx);
-  const memberId = ss58.codec("crust").encode(event.asV1[0]);
-  const account = await getOrCreate(ctx.store, Account, memberId);
-  const joinGroup = new JoinGroup();
-
-  joinGroup.id = ctx.event.id;
-  joinGroup.member = account;
-  joinGroup.owner = ss58.codec("crust").encode(event.asV1[1]);
-  joinGroup.blockHash = ctx.block.hash;
-  joinGroup.blockNum = ctx.block.height;
-  joinGroup.createdAt = new Date(ctx.block.timestamp);
-  joinGroup.extrinisicId = ctx.extrinsic?.id;
-
-  //console.log(joinGroup);
-  await ctx.store.save(account);
-  await ctx.store.save(joinGroup);
+interface JoinGroupInfo {
+  id: string;
+  memberId: string;
+  owner: string;
+  blockHash: string;
+  blockNum: number;
+  createdAt: Date;
+  extrinisicId: string | null | undefined;
 }
 
-async function fileSuccess(ctx: EventHandlerContext): Promise<void> {
-  let event = new MarketFileSuccessEvent(ctx);
-  const accountId = ss58.codec("crust").encode(event.asV1[0]);
-  const account = await getOrCreate(ctx.store, Account, accountId);
-  const storageOrder = new StorageOrder();
-
-  storageOrder.id = ctx.event.id;
-  storageOrder.account = account;
-  storageOrder.fileCid = toHex(event.asV1[1]);
-  console.log("event fileCID", storageOrder.fileCid);
-  console.log("raw fileCID", String(ctx.event.params[1].value));
-  storageOrder.blockHash = ctx.block.hash;
-  storageOrder.blockNum = ctx.block.height;
-  storageOrder.createdAt = new Date(ctx.block.timestamp);
-  storageOrder.extrinisicId = ctx.extrinsic?.id;
-
-  //console.log(storageOrder);
-  await ctx.store.save(account);
-  await ctx.store.save(storageOrder);
+interface FileSuccessInfo {
+  id: string;
+  accountId: string;
+  fileCid: string;
+  blockHash: string;
+  blockNum: number;
+  createdAt: Date;
+  extrinisicId: string | null | undefined;
 }
 
-async function workReportSuccess(ctx: EventHandlerContext): Promise<void> {
-  let event = new SworkWorksReportSuccessEvent(ctx);
-  const accountId = ss58.codec("crust").encode(event.asV1[0]);
-  const accountPr = getOrCreate(ctx.store, Account, accountId);
-  const addedFilesObjPr = ctx.extrinsic?.args.find(
-    (arg) => arg.name === "addedFiles"
-  );
-  const deletedFilesObjPr = ctx.extrinsic?.args.find(
-    (arg) => arg.name === "deletedFiles"
-  );
-  const [account, addFObj, delFObj] = await Promise.all([
-    accountPr,
-    addedFilesObjPr,
-    deletedFilesObjPr,
-  ]);
+interface WorkReportInfo {
+  id: string;
+  accountId: string;
+  addedFiles:
+    | ((string | undefined | null)[] | undefined | null)[]
+    | undefined
+    | null;
+  deletedFiles:
+    | ((string | undefined | null)[] | undefined | null)[]
+    | undefined
+    | null;
+  blockHash: string;
+  blockNum: number;
+  createdAt: Date;
+  extrinisicId: string | null | undefined;
+}
 
-  const workReport = new WorkReport();
+interface EventInfo {
+  joinGroups: JoinGroupInfo[];
+  marketFiles: FileSuccessInfo[];
+  workReports: WorkReportInfo[];
+}
 
-  //console.log(addFObj);
-  //console.log(delFObj);
+function getEvents(ctx: Ctx): EventInfo {
+  let events: EventInfo = {
+    joinGroups: [],
+    marketFiles: [],
+    workReports: [],
+  };
+  for (let block of ctx.blocks) {
+    for (let item of block.items) {
+      if (item.name === "Swork.JoinGroupSuccess") {
+        const e = new SworkJoinGroupSuccessEvent(ctx, item.event);
+        events.joinGroups.push({
+          id: item.event.id,
+          memberId: ss58.codec("crust").encode(e.asV1[0]),
+          owner: ss58.codec("crust").encode(e.asV1[1]),
+          blockHash: block.header.hash,
+          blockNum: block.header.height,
+          createdAt: new Date(block.header.timestamp),
+          extrinisicId: item.event.id, // error, could not find extrinsicId, assigning eventId
+        });
+      }
+      if (item.name === "Swork.WorksReportSuccess") {
+        const e = new MarketFileSuccessEvent(ctx, item.event);
+        events.marketFiles.push({
+          id: item.event.id,
+          accountId: ss58.codec("crust").encode(e.asV1[0]),
+          fileCid: toHex(e.asV1[1]),
+          blockHash: block.header.hash,
+          blockNum: block.header.height,
+          createdAt: new Date(block.header.timestamp),
+          extrinisicId: item.event.id, // error, could not find extrinsicId, assigning eventId
+        });
+      }
+      if (item.name === "Market.FileSuccess") {
+        const e = new SworkWorksReportSuccessEvent(ctx, item.event);
+        const addedExtr = item.event.args.find(
+          (arg: { name: string }) => arg.name === "addedFiles"
+        );
+        const deletedExtr = item.event.args.find(
+          (arg: { name: string }) => arg.name === "deletedFiles"
+        );
 
-  workReport.addedFiles = stringifyArray(Array(addFObj?.value));
-  workReport.deletedFiles = stringifyArray(Array(delFObj?.value));
-  if (workReport.addedFiles.length > 0 || workReport.deletedFiles.length > 0) {
-    workReport.account = account;
+        const addedFiles = stringifyArray(Array(addedExtr.value));
+        const deletedFiles = stringifyArray(Array(deletedExtr.value));
 
-    workReport.id = ctx.event.id;
-    workReport.blockHash = ctx.block.hash;
-    workReport.blockNum = ctx.block.height;
-    workReport.createdAt = new Date(ctx.block.timestamp);
-    workReport.extrinisicId = ctx.extrinsic?.id;
-
-    await ctx.store.save(account);
-    await ctx.store.save(workReport);
+        if (addedFiles.length > 0 || deletedFiles.length > 0) {
+          events.workReports.push({
+            id: item.event.id,
+            addedFiles: addedFiles,
+            deletedFiles: deletedFiles,
+            accountId: ss58.codec("crust").encode(e.asV1[0]),
+            blockHash: block.header.hash,
+            blockNum: block.header.height,
+            createdAt: new Date(block.header.timestamp),
+            extrinisicId: item.event.id, // error, could not find extrinsicId, assigning eventId
+          });
+        }
+      }
+    }
   }
+  return events;
 }
 
-async function getOrCreate<T extends { id: string }>(
-  store: Store,
-  entityConstructor: EntityConstructor<T>,
-  id: string
-): Promise<T> {
-  let e = await store.get<T>(entityConstructor, {
-    where: { id },
-  });
-
-  if (e == null) {
-    e = new entityConstructor();
-    e.id = id;
+function getAccount(m: Map<string, Account>, id: string): Account {
+  let acc = m.get(id);
+  if (acc == null) {
+    acc = new Account();
+    acc.id = id;
+    m.set(id, acc);
   }
-
-  return e;
+  return acc;
 }
-
-type EntityConstructor<T> = {
-  new (...args: any[]): T;
-};
