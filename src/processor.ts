@@ -136,8 +136,8 @@ function getEvents(ctx: Ctx): EventInfo {
         const addedExtr = item.event.call?.args.addedFiles;
         const deletedExtr = item.event.call?.args.deletedFiles;
 
-        const addedFiles = stringifyArray(addedExtr);
-        const deletedFiles = stringifyArray(deletedExtr);
+        const addedFiles = stringifyArray(Array(addedExtr));
+        const deletedFiles = stringifyArray(Array(deletedExtr));
 
         if (addedFiles.length > 0 || deletedFiles.length > 0) {
           events.workReports.push([new WorkReport({
