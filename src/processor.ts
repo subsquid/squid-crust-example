@@ -14,56 +14,58 @@ import {
   JoinGroup,
   StorageOrder,
 } from "./model/generated";
-import * as crustTypes from "@crustio/type-definitions";
 import {
   MarketFileSuccessEvent,
   SworkJoinGroupSuccessEvent,
   SworkWorksReportSuccessEvent,
 } from "./types/events";
-import { EventItem } from "@subsquid/substrate-processor/lib/interfaces/dataSelection";
 
 const processor = new SubstrateBatchProcessor()
   .setBatchSize(500)
   .setDataSource({
-    // Lookup archive by the network name in the Subsquid registry
-    archive: lookupArchive("kusama", { release: "FireSquid" }),
-
-    // Use archive created by archive/docker-compose.yml
-    // archive: 'http://localhost:8888/graphql'
+    archive: lookupArchive("crust", { release: "FireSquid" }),
   })
   .setBlockRange({ from: 583000 })
   .addEvent("Market.FileSuccess", {
-    data: { event: { args: true } },
+    data: { event: { args: true , extrinsic: true} },
   } as const)
   .addEvent("Swork.JoinGroupSuccess", {
-    data: { event: { args: true } },
+    data: { event: { args: true , extrinsic: true} },
   } as const)
-  .addEvent("Swork.WorksReportSuccess", {
-    data: { event: { args: true } },
-  } as const);
+  .addEvent("Swork.WorksReportSuccess");
 
 type Item = BatchProcessorItem<typeof processor>;
 type Ctx = BatchContext<Store, Item>;
 
 processor.run(new TypeormDatabase(), async (ctx) => {
-  let events = getEvents(ctx);
-
-  let accountIds = new Set<string>();
-  for (const jg of events.joinGroups) {
-    accountIds.add(jg.memberId);
-  }
-  for (const mf of events.marketFiles) {
-    accountIds.add(mf.accountId);
-  }
-  for (const wr of events.workReports) {
-    accountIds.add(wr.accountId);
-  }
+  const events = getEvents(ctx);
 
   let accounts = await ctx.store
-    .findBy(Account, { id: In([...accountIds]) })
+    .findBy(Account, { id: In([...events.accountIds]) })
     .then((accounts) => {
       return new Map(accounts.map((a) => [a.id, a]));
     });
+
+  for (const jg of events.joinGroups) {
+    const member = getAccount(accounts, jg[1]);
+    // necessary to add this field to the previously created model
+    // because now we have the Account created.
+    jg[0].member = member;
+  }
+
+  for (const mf of events.marketFiles) {
+    const account = getAccount(accounts, mf[1]);
+    // necessary to add this field to the previously created model
+    // because now we have the Account created.
+    mf[0].account = account;
+  }
+
+  for (const wr of events.workReports) {
+    const account = getAccount(accounts, wr[1]);
+    // necessary to add this field to the previously created model
+    // because now we have the Account created.
+    wr[0].account = account;
+  }
 
   await ctx.store.save(Array.from(accounts.values()));
 });
@@ -80,47 +82,12 @@ function stringifyArray(list: any[]): any[] {
   return listStr;
 }
 
-interface JoinGroupInfo {
-  id: string;
-  memberId: string;
-  owner: string;
-  blockHash: string;
-  blockNum: number;
-  createdAt: Date;
-  extrinisicId: string | null | undefined;
-}
-
-interface FileSuccessInfo {
-  id: string;
-  accountId: string;
-  fileCid: string;
-  blockHash: string;
-  blockNum: number;
-  createdAt: Date;
-  extrinisicId: string | null | undefined;
-}
-
-interface WorkReportInfo {
-  id: string;
-  accountId: string;
-  addedFiles:
-    | ((string | undefined | null)[] | undefined | null)[]
-    | undefined
-    | null;
-  deletedFiles:
-    | ((string | undefined | null)[] | undefined | null)[]
-    | undefined
-    | null;
-  blockHash: string;
-  blockNum: number;
-  createdAt: Date;
-  extrinisicId: string | null | undefined;
-}
-
+type Tuple<T,K> = [T,K];
 interface EventInfo {
-  joinGroups: JoinGroupInfo[];
-  marketFiles: FileSuccessInfo[];
-  workReports: WorkReportInfo[];
+  joinGroups: Tuple<JoinGroup, string>[];
+  marketFiles: Tuple<StorageOrder, string>[];
+  workReports: Tuple<WorkReport, string>[];
+  accountIds: Set<string>;
 }
 
 function getEvents(ctx: Ctx): EventInfo {
@@ -128,56 +95,63 @@ function getEvents(ctx: Ctx): EventInfo {
     joinGroups: [],
     marketFiles: [],
     workReports: [],
+    accountIds: new Set<string>(),
   };
   for (let block of ctx.blocks) {
     for (let item of block.items) {
       if (item.name === "Swork.JoinGroupSuccess") {
         const e = new SworkJoinGroupSuccessEvent(ctx, item.event);
-        events.joinGroups.push({
+        const memberId = ss58.codec("crust").encode(e.asV1[0]);
+        events.joinGroups.push([new JoinGroup({
           id: item.event.id,
-          memberId: ss58.codec("crust").encode(e.asV1[0]),
           owner: ss58.codec("crust").encode(e.asV1[1]),
           blockHash: block.header.hash,
           blockNum: block.header.height,
           createdAt: new Date(block.header.timestamp),
-          extrinisicId: item.event.id, // error, could not find extrinsicId, assigning eventId
-        });
+          extrinisicId: item.event.extrinsic?.id, // error, could not find extrinsicId, assigning eventId
+        }), memberId]);
+        
+        // add encountered account ID to the Set of unique accountIDs
+        events.accountIds.add(memberId);
       }
-      if (item.name === "Swork.WorksReportSuccess") {
+      if (item.name === "Market.FileSuccess") {
         const e = new MarketFileSuccessEvent(ctx, item.event);
-        events.marketFiles.push({
+        const accountId = ss58.codec("crust").encode(e.asV1[0]);
+        events.marketFiles.push([new StorageOrder({
           id: item.event.id,
-          accountId: ss58.codec("crust").encode(e.asV1[0]),
           fileCid: toHex(e.asV1[1]),
           blockHash: block.header.hash,
           blockNum: block.header.height,
           createdAt: new Date(block.header.timestamp),
-          extrinisicId: item.event.id, // error, could not find extrinsicId, assigning eventId
-        });
-      }
-      if (item.name === "Market.FileSuccess") {
-        const e = new SworkWorksReportSuccessEvent(ctx, item.event);
-        const addedExtr = item.event.args.find(
-          (arg: { name: string }) => arg.name === "addedFiles"
-        );
-        const deletedExtr = item.event.args.find(
-          (arg: { name: string }) => arg.name === "deletedFiles"
-        );
+          extrinisicId: item.event.extrinsic?.id, // error, could not find extrinsicId, assigning eventId
+        }), accountId]);
 
-        const addedFiles = stringifyArray(Array(addedExtr.value));
-        const deletedFiles = stringifyArray(Array(deletedExtr.value));
+        // add encountered account ID to the Set of unique accountIDs
+        events.accountIds.add(accountId)
+      }
+      if (item.name === "Swork.WorksReportSuccess") {
+        const e = new SworkWorksReportSuccessEvent(ctx, item.event);
+        const accountId = ss58.codec("crust").encode(e.asV1[0]);
+
+        const addedExtr = item.event.call?.args.addedFiles;
+        const deletedExtr = item.event.call?.args.deletedFiles;
+
+        const addedFiles = stringifyArray(addedExtr);
+        const deletedFiles = stringifyArray(deletedExtr);
 
         if (addedFiles.length > 0 || deletedFiles.length > 0) {
-          events.workReports.push({
+          events.workReports.push([new WorkReport({
             id: item.event.id,
             addedFiles: addedFiles,
             deletedFiles: deletedFiles,
-            accountId: ss58.codec("crust").encode(e.asV1[0]),
             blockHash: block.header.hash,
             blockNum: block.header.height,
             createdAt: new Date(block.header.timestamp),
             extrinisicId: item.event.id, // error, could not find extrinsicId, assigning eventId
-          });
+          }), accountId]);
+
+          // add encountered account ID to the Set of unique accountIDs
+          events.accountIds.add(accountId);
         }
       }
     }

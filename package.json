@@ -3,11 +3,11 @@
   "private": true,
   "scripts": {
     "build": "rm -rf lib && tsc",
-    "init": "node db/init.js",
-    "db:migrate": "sqd db migrate",
-    "schema:reset": "",
-    "processor:migrate": "echo skip",
+    "db:migrate": "npx squid-typeorm-migration apply",
+    "codegen": "npx squid-typeorm-codegen",
+    "typegen": "npx squid-substrate-typegen typegen.json",
     "processor:start": "node lib/processor.js",
+    "processor:dev": "node -r dotenv/config lib/processor.js",
     "query-node:start": "squid-graphql-server"
   },
   "dependencies": {

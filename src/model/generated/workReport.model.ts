@@ -15,10 +15,10 @@ export class WorkReport {
   @ManyToOne_(() => Account, {nullable: false})
   account!: Account
 
-  @Column_("jsonb", {transformer: {to: obj => obj == null ? undefined : obj.map((val: any) => val == null ? undefined : val.map((val: any) => val)), from: obj => obj == null ? undefined : marshal.fromList(obj, val => val == null ? undefined : marshal.fromList(val, val => val == null ? undefined : marshal.string.fromJSON(val)))}, nullable: true})
+  @Column_("jsonb", {transformer: {to: obj => obj, from: obj => obj == null ? undefined : marshal.fromList(obj, val => val == null ? undefined : marshal.fromList(val, val => val == null ? undefined : marshal.string.fromJSON(val)))}, nullable: true})
   addedFiles!: ((string | undefined | null)[] | undefined | null)[] | undefined | null
 
-  @Column_("jsonb", {transformer: {to: obj => obj == null ? undefined : obj.map((val: any) => val == null ? undefined : val.map((val: any) => val)), from: obj => obj == null ? undefined : marshal.fromList(obj, val => val == null ? undefined : marshal.fromList(val, val => val == null ? undefined : marshal.string.fromJSON(val)))}, nullable: true})
+  @Column_("jsonb", {transformer: {to: obj => obj, from: obj => obj == null ? undefined : marshal.fromList(obj, val => val == null ? undefined : marshal.fromList(val, val => val == null ? undefined : marshal.string.fromJSON(val)))}, nullable: true})
   deletedFiles!: ((string | undefined | null)[] | undefined | null)[] | undefined | null
 
   @Column_("text", {nullable: true})
@@ -30,6 +30,6 @@ export class WorkReport {
   @Column_("text", {nullable: false})
   blockHash!: string
 
-  @Column_("integer", {nullable: false})
+  @Column_("int4", {nullable: false})
   blockNum!: number
 }
