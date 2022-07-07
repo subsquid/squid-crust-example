@@ -27,10 +27,10 @@ const processor = new SubstrateBatchProcessor()
   })
   .setBlockRange({ from: 583000 })
   .addEvent("Market.FileSuccess", {
-    data: { event: { args: true , extrinsic: true} },
+    data: { event: { args: true , extrinsic: true, call: true} },
   } as const)
   .addEvent("Swork.JoinGroupSuccess", {
-    data: { event: { args: true , extrinsic: true} },
+    data: { event: { args: true , extrinsic: true, call: true} },
   } as const)
   .addEvent("Swork.WorksReportSuccess");
 
@@ -68,11 +68,13 @@ processor.run(new TypeormDatabase(), async (ctx) => {
   }
 
   await ctx.store.save(Array.from(accounts.values()));
+  await ctx.store.insert(events.joinGroups.map(el => el[0]));
+  await ctx.store.insert(events.marketFiles.map(el => el[0]));
+  await ctx.store.insert(events.workReports.map(el => el[0]));
 });
 
 function stringifyArray(list: any[]): any[] {
   let listStr: any[] = [];
-  list = list[0];
   for (let vec of list) {
     for (let i = 0; i < vec.length; i++) {
       vec[i] = String(vec[i]);
@@ -108,7 +110,7 @@ function getEvents(ctx: Ctx): EventInfo {
           blockHash: block.header.hash,
           blockNum: block.header.height,
           createdAt: new Date(block.header.timestamp),
-          extrinisicId: item.event.extrinsic?.id, // error, could not find extrinsicId, assigning eventId
+          extrinisicId: item.event.extrinsic?.id, 
         }), memberId]);
         
         // add encountered account ID to the Set of unique accountIDs
@@ -123,7 +125,7 @@ function getEvents(ctx: Ctx): EventInfo {
           blockHash: block.header.hash,
           blockNum: block.header.height,
           createdAt: new Date(block.header.timestamp),
-          extrinisicId: item.event.extrinsic?.id, // error, could not find extrinsicId, assigning eventId
+          extrinisicId: item.event.extrinsic?.id,
         }), accountId]);
 
         // add encountered account ID to the Set of unique accountIDs
@@ -136,8 +138,8 @@ function getEvents(ctx: Ctx): EventInfo {
         const addedExtr = item.event.call?.args.addedFiles;
         const deletedExtr = item.event.call?.args.deletedFiles;
 
-        const addedFiles = stringifyArray(Array(addedExtr));
-        const deletedFiles = stringifyArray(Array(deletedExtr));
+        const addedFiles = stringifyArray(addedExtr);
+        const deletedFiles = stringifyArray(deletedExtr);
 
         if (addedFiles.length > 0 || deletedFiles.length > 0) {
           events.workReports.push([new WorkReport({
@@ -147,7 +149,7 @@ function getEvents(ctx: Ctx): EventInfo {
             blockHash: block.header.hash,
             blockNum: block.header.height,
             createdAt: new Date(block.header.timestamp),
-            extrinisicId: item.event.id, // error, could not find extrinsicId, assigning eventId
+            extrinisicId: item.event.extrinsic?.id,
           }), accountId]);
 
           // add encountered account ID to the Set of unique accountIDs
