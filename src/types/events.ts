@@ -1,9 +1,18 @@
 import assert from 'assert'
-import {EventContext, Result, deprecateLatest} from './support'
+import {Chain, ChainContext, EventContext, Event, Result} from './support'
+import * as v1 from './v1'
 
 export class MarketFileSuccessEvent {
-  constructor(private ctx: EventContext) {
-    assert(this.ctx.event.name === 'market.FileSuccess')
+  private readonly _chain: Chain
+  private readonly event: Event
+
+  constructor(ctx: EventContext)
+  constructor(ctx: ChainContext, event: Event)
+  constructor(ctx: EventContext, event?: Event) {
+    event = event || ctx.event
+    assert(event.name === 'Market.FileSuccess')
+    this._chain = ctx._chain
+    this.event = event
   }
 
   /**
@@ -12,7 +21,7 @@ export class MarketFileSuccessEvent {
    *  The second item is the cid of the file.
    */
   get isV1(): boolean {
-    return this.ctx._chain.getEventHash('market.FileSuccess') === '15a3ff7f9477a0e9afa431990d912c8024d507c02d31c44934807bcebbbd3adf'
+    return this._chain.getEventHash('Market.FileSuccess') === '15a3ff7f9477a0e9afa431990d912c8024d507c02d31c44934807bcebbbd3adf'
   }
 
   /**
@@ -20,25 +29,23 @@ export class MarketFileSuccessEvent {
    *  The first item is the account who places the storage order.
    *  The second item is the cid of the file.
    */
-  get asV1(): [Uint8Array, Uint8Array] {
+  get asV1(): [v1.AccountId, v1.MerkleRoot] {
     assert(this.isV1)
-    return this.ctx._chain.decodeEvent(this.ctx.event)
-  }
-
-  get isLatest(): boolean {
-    deprecateLatest()
-    return this.isV1
-  }
-
-  get asLatest(): [Uint8Array, Uint8Array] {
-    deprecateLatest()
-    return this.asV1
+    return this._chain.decodeEvent(this.event)
   }
 }
 
 export class SworkJoinGroupSuccessEvent {
-  constructor(private ctx: EventContext) {
-    assert(this.ctx.event.name === 'swork.JoinGroupSuccess')
+  private readonly _chain: Chain
+  private readonly event: Event
+
+  constructor(ctx: EventContext)
+  constructor(ctx: ChainContext, event: Event)
+  constructor(ctx: EventContext, event?: Event) {
+    event = event || ctx.event
+    assert(event.name === 'Swork.JoinGroupSuccess')
+    this._chain = ctx._chain
+    this.event = event
   }
 
   /**
@@ -47,7 +54,7 @@ export class SworkJoinGroupSuccessEvent {
    *  The second item is the group owner's account.
    */
   get isV1(): boolean {
-    return this.ctx._chain.getEventHash('swork.JoinGroupSuccess') === 'e54ae910805a8a9413af1a7f5885a5d0ba5f4e105175cd6b0ce2a8702ddf1861'
+    return this._chain.getEventHash('Swork.JoinGroupSuccess') === 'e54ae910805a8a9413af1a7f5885a5d0ba5f4e105175cd6b0ce2a8702ddf1861'
   }
 
   /**
@@ -55,25 +62,23 @@ export class SworkJoinGroupSuccessEvent {
    *  The first item is the member's account.
    *  The second item is the group owner's account.
    */
-  get asV1(): [Uint8Array, Uint8Array] {
+  get asV1(): [v1.AccountId, v1.AccountId] {
     assert(this.isV1)
-    return this.ctx._chain.decodeEvent(this.ctx.event)
-  }
-
-  get isLatest(): boolean {
-    deprecateLatest()
-    return this.isV1
-  }
-
-  get asLatest(): [Uint8Array, Uint8Array] {
-    deprecateLatest()
-    return this.asV1
+    return this._chain.decodeEvent(this.event)
   }
 }
 
 export class SworkWorksReportSuccessEvent {
-  constructor(private ctx: EventContext) {
-    assert(this.ctx.event.name === 'swork.WorksReportSuccess')
+  private readonly _chain: Chain
+  private readonly event: Event
+
+  constructor(ctx: EventContext)
+  constructor(ctx: ChainContext, event: Event)
+  constructor(ctx: EventContext, event?: Event) {
+    event = event || ctx.event
+    assert(event.name === 'Swork.WorksReportSuccess')
+    this._chain = ctx._chain
+    this.event = event
   }
 
   /**
@@ -82,7 +87,7 @@ export class SworkWorksReportSuccessEvent {
    *  The second item is the pub key of the sWorker.
    */
   get isV1(): boolean {
-    return this.ctx._chain.getEventHash('swork.WorksReportSuccess') === '15a3ff7f9477a0e9afa431990d912c8024d507c02d31c44934807bcebbbd3adf'
+    return this._chain.getEventHash('Swork.WorksReportSuccess') === '15a3ff7f9477a0e9afa431990d912c8024d507c02d31c44934807bcebbbd3adf'
   }
 
   /**
@@ -90,18 +95,8 @@ export class SworkWorksReportSuccessEvent {
    *  The first item is the account who send the work report
    *  The second item is the pub key of the sWorker.
    */
-  get asV1(): [Uint8Array, Uint8Array] {
+  get asV1(): [v1.AccountId, v1.SworkerPubKey] {
     assert(this.isV1)
-    return this.ctx._chain.decodeEvent(this.ctx.event)
-  }
-
-  get isLatest(): boolean {
-    deprecateLatest()
-    return this.isV1
-  }
-
-  get asLatest(): [Uint8Array, Uint8Array] {
-    deprecateLatest()
-    return this.asV1
+    return this._chain.decodeEvent(this.event)
   }
 }
