@@ -24,19 +24,15 @@ Start by installing the dependencies of the project with
 npm i
 ```
 
-Crust network offers an `npm` package with the definition of the types used in their blockchain. Install this package with the command
-
-```bash
-npm i @crustio/type-definitions
-```
-
 ### 2. Change the `schema.graphql` file
 
 To define the new entities and make sure they will be saved in the database, the starting point is the `schema.graphql` file.
 
+This all requires some implicit knowledge of the blockchain itself ([here's a tip](https://docs.subsquid.io/docs/support/how-do-i-know-which-events-and-extrinsics-i-need-for-the-handlers) on how to obtain this information)
+
 ### 3. Regenerate the TypeScript entity models
 
-The `sqd codegen` command reads the `schema.graphql` file and automatically generates TypeScript classes, modeling the entities. You can find these in the `src/model/generated` folder.
+The `make codegen` command reads the `schema.graphql` file and automatically generates TypeScript classes, modeling the entities. You can find these in the `src/model/generated` folder.
 
 ### 4. Generate type-safe wrapper Interfaces for Substrate entities
 
@@ -44,9 +40,9 @@ The Squid framework offers an automated tool to generate Interfaces for Substrat
 
 #### Generate a typesBundle file
 
-Our documentation has a [mini-guide on how to](https://docs.subsquid.io/faq/where-do-i-get-a-type-bundle-for-my-chain) create a JSON file that defines types used in the blockchain, starting from polkadot types definitions.
+Our documentation has a [mini-guide on how to](https://docs.subsquid.io/docs/support/where-do-i-get-a-type-bundle-for-my-chain) create a JSON file that defines types used in the blockchain, starting from polkadot types definitions.
 
-Please head over to our documentation, follow [the guide](https://docs.subsquid.io/faq/where-do-i-get-a-type-bundle-for-my-chain) and generate a file named `crustTypesBundle.json` (or cheat and take a sneak peek at the one in this repository.)
+Please head over to our documentation, follow [the guide](https://docs.subsquid.io/docs/support/where-do-i-get-a-type-bundle-for-my-chain) and generate a file named `crustTypesBundle.json` (or cheat and take a sneak peek at the one in this repository.)
 
 #### Explore the chain
 
@@ -55,7 +51,7 @@ Run this command to collect blockchain metadata information in a file.
 ```bash
 npx squid-substrate-metadata-explorer \
     --chain wss://rpc-crust-mainnet.decoo.io \
-    --archive https://crust.indexer.gc.subsquid.io/v4/graphql \
+    --archive https://crust.archive.subsquid.io/graphql \
     --out crustVersions.json
 ```
 
@@ -77,12 +73,14 @@ The `typegen.json` file offers the ability to configure the interface creation p
 }
 ```
 
+The **"Fire Squid"** release allows to collapse the metadata exploration and the type-safe wrappers generation steps into one, by specifying the URL of the Squid Archive dedicated to the blockchain subject of the project in the `specVersion` field in the `typegen.json` config file. In doing so, it is possible to skip launching the `metadata-explore` command from the previous section and generate type-safe interfaces with only one command, as explained below.
+
 #### Generate interfaces
 
 Previously collected metadata is used by the following command to generate TypeScript files defining interfaces. You can find them in `src/types`.
 
 ```bash
-npx squid-substrate-typegen typegen.json
+make typegen
 ```
 
 ### 5. Define the business logic
@@ -95,15 +93,16 @@ The only thing left to do is develop the business logic. To do so, edit the `src
 
 ### 6. Reset the database and run the API
 
-To make sure we are starting from scratch, launch these commands to reset the database and apply the new schema. Make sure the database container is up (otherwise, launch `docker-compose up -d`).
+To make sure we are starting from scratch, launch these commands to reset the database and apply the new schema. Make sure the database container is up (otherwise, launch `docker-compose up -d` or `make up`).
 
 ```bash
-sqd db drop
-sqd db create
 rm -rf db/migrations/*.js
-sqd db create-migration Init
-sqd db migrate
+npm run build
+npx squid-typeorm-migration generate
+npx squid-typeorm-migration apply
 ```
+
+If you are having issues with the migration, it is possible that the container had already been launched before, and that the database is not empty. In that case, simply run `make down`, followed by `make up`, to reset the container and the database with it.
 
 Now the only thing left to do is to build and run the processor, and launch the graphql server.
 
