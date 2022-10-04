@@ -110,7 +110,7 @@ function getEvents(ctx: Ctx): EventInfo {
           blockHash: block.header.hash,
           blockNum: block.header.height,
           createdAt: new Date(block.header.timestamp),
-          extrinisicId: item.event.extrinsic?.id, 
+          extrinsicId: item.event.extrinsic?.id, 
         }), memberId]);
         
         // add encountered account ID to the Set of unique accountIDs
@@ -125,7 +125,7 @@ function getEvents(ctx: Ctx): EventInfo {
           blockHash: block.header.hash,
           blockNum: block.header.height,
           createdAt: new Date(block.header.timestamp),
-          extrinisicId: item.event.extrinsic?.id,
+          extrinsicId: item.event.extrinsic?.id,
         }), accountId]);
 
         // add encountered account ID to the Set of unique accountIDs
@@ -149,7 +149,7 @@ function getEvents(ctx: Ctx): EventInfo {
             blockHash: block.header.hash,
             blockNum: block.header.height,
             createdAt: new Date(block.header.timestamp),
-            extrinisicId: item.event.extrinsic?.id,
+            extrinsicId: item.event.extrinsic?.id,
           }), accountId]);
 
           // add encountered account ID to the Set of unique accountIDs
